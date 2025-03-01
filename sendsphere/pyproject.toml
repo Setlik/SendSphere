@@ -10,6 +10,12 @@ python = "^3.12"
 dotenv = "^0.9.9"
 
 
+[tool.poetry.group.lint.dependencies]
+flake8 = "^7.1.2"
+mypy = "^1.15.0"
+black = "^25.1.0"
+isort = "^6.0.1"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
