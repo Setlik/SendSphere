@@ -1,0 +1,19 @@
+<h2>Статистика попыток рассылок</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Дата и время</th>
+            <th>Статус</th>
+            <th>Ответ сервера</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for attempt in attempts %}
+        <tr>
+            <td>{{ attempt.date_time }}</td>
+            <td>{{ attempt.get_status_display }}</td>
+            <td>{{ attempt.server_response }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

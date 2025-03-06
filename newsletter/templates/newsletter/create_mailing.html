@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Страница создания рассылок</title>
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+</head>
+<body>
+{% extends 'newsletter/base.html' %}
+
+{% block title %}Страница создания рассылок{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <h2 class="text-center mb-4">Создание новой рассылки</h2>
+    <div class="card">
+        <div class="card-body">
+            <form method="POST">
+                {% csrf_token %}
+
+                {% if form.errors %}
+                <div class="alert alert-danger">
+                    Пожалуйста, исправьте следующие ошибки:
+                    <ul>
+                        {% for field, errors in form.errors.items %}
+                        {% for error in errors %}
+                        <li>{{ field }}: {{ error }}</li>
+                        {% endfor %}
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <div class="mb-3">
+                    <label for="message" class="form-label">Сообщение:</label>
+                    <select class="form-select {% if form.message.errors %}is-invalid{% endif %}" id="message"
+                            name="message">
+                        <option value="" selected>Выберите сообщение...</option>
+                        {% for message in messages %}
+                        <option value="{{ message.id }}" {% if form.message.value|stringformat:'s' == message.id|stringformat:'s' %}selected{% endif %}> {{ message.subject }} </option>
+                        {% endfor %}
+                    </select>
+                    {% if form.message.errors %}
+                    <div class="invalid-feedback">
+                        {% for error in form.message.errors %}
+                        {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="start_time" class="form-label">Дата начала:</label>
+                        <input type="datetime-local"
+                               class="form-control {% if form.start_time.errors %}is-invalid{% endif %}" id="start_time"
+                               name="start_time" value="{{ form.start_time.value|date:'Y-m-d\TH:i' }}">
+                        {% if form.start_time.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.start_time.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label for="end_time" class="form-label">Дата окончания:</label>
+                        <input type="datetime-local"
+                               class="form-control {% if form.end_time.errors %}is-invalid{% endif %}" id="end_time"
+                               name="end_time" value="{{ form.end_time.value|date:'Y-m-d\TH:i' }}">
+                        {% if form.end_time.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.end_time.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_recipients" class="form-label">Получатели:</label>
+                    {{ form.recipients }}
+                    {% if form.recipients.errors %}
+                    <div class="invalid-feedback">
+                        {% for error in form.recipients.errors %}
+                        {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-send"></i> Создать рассылку
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script src="/static/js/bootstrap.bundle.min.js"></script>
+{% endblock %}
+</html>
