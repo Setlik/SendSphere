@@ -8,7 +8,6 @@ class CustomUser(AbstractUser):
     username = models.CharField(max_length=30, unique=True)
     token = models.CharField(max_length=32, blank=True, null=True)
     created_at = models.DateTimeField(default=timezone.now)
-    # product_moderator = models.BooleanField(default=False)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]

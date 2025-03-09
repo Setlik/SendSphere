@@ -7,17 +7,54 @@
     <link rel="stylesheet" href="/static/css/bootstrap.min.css">
 </head>
 <body>
-    {% extends 'newsletter/base.html' %}
+{% extends 'newsletter/base.html' %}
 
 
-    {% block title %}Главная страница{% endblock %}
+{% block title %}Главная страница{% endblock %}
 
-    {% block content %}
-    <h1>Добро пожаловать в SendSphere!</h1>
-
-    <p>Общее количество рассылок: {{ total_mailings }}</p>
-    <p>Количество активных рассылок: {{ active_mailings }}</p>
-    <p>Количество уникальных получателей: {{ unique_recipients }}</p>
+{% block content %}
+<div class="hero">
+    <h1 class="display-4">Добро пожаловать в SendSphere!</h1>
+    <p class="lead">Эффективные Email Рассылки для вашего бизнеса</p>
+</div>
+{% load cache %}
+{% cache 600 my_cache_key %}
+<div class="container text-center my-5">
+    <div class="row">
+        <div class="col-md-4 feature-item">
+            <div class="border rounded p-3">
+                <h5>Общее количество рассылок:</h5>
+                <mark>{{ total_mailings }}</mark>
+            </div>
+        </div>
+        <div class="col-md-4 feature-item">
+            <div class="border rounded p-3">
+                <h5>Количество активных рассылок:</h5>
+                <mark>{{ active_mailings }}</mark>
+            </div>
+        </div>
+        <div class="col-md-4 feature-item">
+            <div class="border rounded p-3">
+                <h5>Количество уникальных получателей:</h5>
+                <mark>{{ unique_recipients }}</mark>
+            </div>
+        </div>
+    </div>
+</div>
+{% endcache %}
+<div class="container feature-text">
+    <h3>Что мы предлагаем:</h3>
+    <p>Добро пожаловать на наш сайт, посвящённый эффективным email рассылкам! Мы предлагаем инновационные решения для
+        вашего бизнеса, позволяя вам легко и быстро доставлять важные сообщения и акции прямо в почтовые ящики ваших
+        клиентов. Наша платформа предоставляет мощные инструменты для создания привлекательных рассылок, таргетирования
+        аудитории и анализа результатов.</p>
+    <ul>
+        <li>Налаживать персонализированную коммуникацию с клиентами.</li>
+        <li>Увеличивать уровень вовлеченности и лояльности.</li>
+        <li>Отслеживать эффективность кампаний в реальном времени.</li>
+    </ul>
+    <p>Начните сегодня и преобразите свои маркетинговые стратегии с помощью корректно настроенных email рассылок!</p>
+</div>
 <script src="/static/js/bootstrap.bundle.min.js"></script>
 </body>
 {% endblock %}

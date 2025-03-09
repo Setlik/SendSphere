@@ -1,6 +1,6 @@
-from django.contrib.auth.forms import AuthenticationForm
 from django import forms
 from django.contrib.auth import get_user_model
+from django.contrib.auth.forms import AuthenticationForm
 
 from .models import CustomUser
 
@@ -9,11 +9,13 @@ User = get_user_model()
 
 class UserRegistrationForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput)
-    password_confirm = forms.CharField(widget=forms.PasswordInput, label='Password confirm')
+    password_confirm = forms.CharField(
+        widget=forms.PasswordInput, label="Password confirm"
+    )
 
     class Meta:
         model = CustomUser
-        fields = ['username', 'email', 'password']
+        fields = ["username", "email", "password"]
 
     def clean(self):
         cleaned_data = super().clean()
@@ -33,7 +35,8 @@ class UserRegistrationForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
-            field.widget.attrs.update({'class': 'form-control'})
+            field.widget.attrs.update({"class": "form-control"})
+
 
 class EmailLoginForm(AuthenticationForm):
     username = forms.EmailField(label="Email", max_length=254)
@@ -41,4 +44,4 @@ class EmailLoginForm(AuthenticationForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
-            field.widget.attrs.update({'class': 'form-control'})
+            field.widget.attrs.update({"class": "form-control"})

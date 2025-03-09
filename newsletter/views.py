@@ -1,54 +1,100 @@
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.cache import cache
 from django.core.mail import send_mail
+from django.db.models import Count, Q
 from django.http import HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse, reverse_lazy
 from django.views import View
-from django.views.generic import ListView, CreateView, UpdateView, DeleteView
-from django.urls import reverse_lazy
-from .forms import RecipientForm, MessageForm, MailingForm
-from .models import Mailing, Message, Recipient, MailingAttempt, Contact
-from django.utils import timezone
+from django.views.generic import CreateView, DeleteView, ListView, UpdateView
+
+from .forms import MailingForm, MessageForm, RecipientForm
+from .models import Contact, Mailing, MailingAttempt, Message, Recipient
 
 
 class HomeView(View):
     def get(self, request):
-        total_mailings = Mailing.objects.count()
-        active_mailings = Mailing.objects.filter(status='running').count()
-        unique_recipients = Recipient.objects.count()
+        cache_key = "home_view_stats"
+        stats = cache.get(cache_key)
 
-        context = {
-            'total_mailings': total_mailings,
-            'active_mailings': active_mailings,
-            'unique_recipients': unique_recipients,
-        }
-        return render(request, 'newsletter/home.html', context)
+        if stats is None:
+            total_mailings = Mailing.objects.count()
+            active_mailings = Mailing.objects.filter(status="running").count()
+            unique_recipients = Recipient.objects.count()
+            stats = {
+                "total_mailings": total_mailings,
+                "active_mailings": active_mailings,
+                "unique_recipients": unique_recipients,
+            }
+
+            cache.set(cache_key, stats, timeout=300)
+
+        return render(request, "newsletter/home.html", stats)
 
 
 class CreateMailingView(View):
     def get(self, request):
-        messages = Message.objects.all()
-        recipients = Recipient.objects.all()
-        return render(request, 'newsletter/create_mailing.html', {'messages': messages, 'recipients': recipients})
+        form = MailingForm()
+        messages_list = Message.objects.all()
+        all_recipients = Recipient.objects.all()
+
+        create_message_url = reverse("message_create")
+        create_recipient_url = reverse("recipient_create")
+
+        return render(
+            request,
+            "newsletter/create_mailing.html",
+            {
+                "form": form,
+                "messages": messages_list,
+                "recipients": all_recipients,
+                "create_message_url": create_message_url,
+                "create_recipient_url": create_recipient_url,
+            },
+        )
 
     def post(self, request):
-        message_id = request.POST.get('message')
-        start_time = request.POST.get('start_time')
-        end_time = request.POST.get('end_time')
-        message = Message.objects.get(id=message_id)
-        mailing = Mailing.objects.create(
-            start_time=start_time,
-            end_time=end_time,
-            message=message,
-            status='created'
-        )
-        mailing.recipients.set(request.POST.getlist('recipients'))
+        form = MailingForm(request.POST, request.FILES)
+        if form.is_valid():
+            mailing = form.save(commit=False)
+            mailing.owner = request.user
+            mailing.status = "created"
+            mailing.save()
+
+            selected_recipients = form.cleaned_data["recipients"]
+            mailing.recipients.set(selected_recipients)
+
+            return redirect("mailing_list")
+        else:
+            messages_list = Message.objects.all()
+            all_recipients = Recipient.objects.all()
+            create_message_url = reverse("message_create")
+            create_recipient_url = reverse("recipient_create")
+            return render(
+                request,
+                "newsletter/create_mailing.html",
+                {
+                    "form": form,
+                    "messages": messages_list,
+                    "recipients": all_recipients,
+                    "create_message_url": create_message_url,
+                    "create_recipient_url": create_recipient_url,
+                },
+            )
+
+
+class MailingStartView(View):
+    def get(self, request, mailing_id):
+        mailing = get_object_or_404(Mailing, pk=mailing_id)
+        mailing.status = "running"
         mailing.save()
-        return redirect('mailing_list')
+        return redirect("mailing_detail", mailing_id=mailing_id)
 
 
 def send_mailing(request, pk):
-    mailing = Mailing.objects.get(id=pk)
+    mailing = get_object_or_404(Mailing, id=pk)
     recipients = mailing.recipients.all()
 
     for recipient in recipients:
@@ -56,44 +102,55 @@ def send_mailing(request, pk):
             send_mail(
                 mailing.message.subject,
                 mailing.message.body,
-                'your_email@example.com',
+                settings.EMAIL_HOST_USER,
                 [recipient.email],
                 fail_silently=False,
             )
 
-            # Создаем запись об успешной попытке
-            Attempt.objects.create(
+            MailingAttempt.objects.create(
                 mailing=mailing,
-                status='success',
-                response='Сообщение успешно отправлено',
+                status="success",
+                response="Сообщение успешно отправлено",
             )
 
-            messages.success(request, f'Сообщение отправлено получателю {recipient.email}')
+            messages.success(
+                request, f"Сообщение отправлено получателю {recipient.email}"
+            )
+
         except Exception as e:
-            # Создаем запись о неуспешной попытке
-            Attempt.objects.create(
+            MailingAttempt.objects.create(
                 mailing=mailing,
-                status='failed',
+                status="failed",
                 response=str(e),
             )
-            messages.error(request, f'Ошибка при отправке сообщения получателю {recipient.email}: {str(e)}')
+            messages.error(
+                request,
+                f"Ошибка при отправке сообщения получателю {recipient.email}: {str(e)}",
+            )
 
-    return redirect('mailing_list')
-
-
-class MailingStartView(View):
-    def get(self, request, mailing_id):
-        mailing = Mailing.objects.get(id=mailing_id)
-        # Запускаем процесс отправки
-        mailing.status = 'started'
-        mailing.save()
-        return redirect('mailing_detail', pk=mailing_id)
+    return redirect("mailing_list")
 
 
-class MailingStatisticsView(View):
+class UserMailingReportsView(LoginRequiredMixin, View):
+    template_name = "newsletter/mailing_statistics.html"
+
     def get(self, request):
-        attempts = MailingAttempt.objects.all()
-        return render(request, 'newsletter/mailing_statistics.html', {'attempts': attempts})
+        user = request.user
+        cache_key = f"user_report_{user.id}"
+        user_report = cache.get(cache_key)
+
+        if user_report is None:
+            user_report = MailingAttempt.objects.filter(mailing__owner=user).aggregate(
+                total_sent=Count("id"),
+                successful_attempts=Count("id", filter=Q(status="success")),
+                failed_attempts=Count("id", filter=Q(status="failed")),
+            )
+            cache.set(cache_key, user_report, timeout=300)
+
+        context = {
+            "user_report": user_report,
+        }
+        return render(request, self.template_name, context)
 
 
 class ContactView(LoginRequiredMixin, View):
@@ -108,71 +165,89 @@ class ContactView(LoginRequiredMixin, View):
 
 class RecipientListView(ListView):
     model = Recipient
-    template_name = 'recipient/list.html'
-    context_object_name = 'recipients'
+    template_name = "newsletter/recipient/recipient_list.html"
+    context_object_name = "recipients"
 
 
 class RecipientCreateView(CreateView):
     model = Recipient
     form_class = RecipientForm
-    template_name = 'recipient/create.html'
-    success_url = '/clients/'
+    template_name = "newsletter/recipient/recipient_create.html"
+    success_url = reverse_lazy("recipient_list")
+
+    def form_valid(self, form):
+        form.instance.owner = self.request.user
+        return super().form_valid(form)
 
 
 class RecipientUpdateView(UpdateView):
     model = Recipient
     form_class = RecipientForm
-    template_name = 'recipient/update.html'
-    success_url = '/clients/'
+    template_name = "newsletter/recipient/recipient_update.html"
+    success_url = reverse_lazy("recipient_list")
 
 
 class RecipientDeleteView(DeleteView):
     model = Recipient
-    template_name = 'recipient/delete.html'
-    success_url = '/clients/'
+    template_name = "newsletter/recipient/recipient_delete.html"
+    success_url = reverse_lazy("recipient_list")
 
 
 class MessageListView(ListView):
     model = Message
-    template_name = 'мessage/list.html'
-    context_object_name = 'мessages'
+    template_name = "newsletter/messages/message_list.html"
+    context_object_name = "messages"
+
 
 class MessageCreateView(CreateView):
     model = Message
     form_class = MessageForm
-    template_name = 'мessage/create.html'
-    success_url = '/мessages/'
+    template_name = "newsletter/messages/message_create.html"
+    success_url = reverse_lazy("message_list")
+
 
 class MessageUpdateView(UpdateView):
     model = Message
     form_class = MessageForm
-    template_name = 'мessage/update.html'
-    success_url = '/мessages/'
+    template_name = "newsletter/messages/message_update.html"
+    success_url = reverse_lazy("message_list")
+
 
 class MessageDeleteView(DeleteView):
     model = Message
-    template_name = 'мessage/delete.html'
-    success_url = '/мessages/'
+    template_name = "newsletter/messages/message_delete.html"
+    success_url = reverse_lazy("message_list")
 
 
 class MailingListView(ListView):
     model = Mailing
-    template_name = 'mailing/list.html'
-    context_object_name = 'mailings'
+    template_name = "newsletter/mailings/mailing_list.html"
+    context_object_name = "mailings"
+
 
 class MailingCreateView(CreateView):
     model = Mailing
     form_class = MailingForm
-    template_name = 'mailing/create.html'
-    success_url = '/mailings/'
+    template_name = "newsletter/mailings/create_mailing.html"
+    success_url = reverse_lazy("mailing_list")
+
 
 class MailingUpdateView(UpdateView):
     model = Mailing
     form_class = MailingForm
-    template_name = 'mailing/update.html'
-    success_url = '/mailings/'
+    template_name = "newsletter/mailings/mailing_update.html"
+    success_url = reverse_lazy("mailing_list")
+
 
 class MailingDeleteView(DeleteView):
     model = Mailing
-    template_name = 'mailing/delete.html'
-    success_url = '/mailings/'
+    template_name = "newsletter/mailings/mailing_delete.html"
+    success_url = reverse_lazy("mailing_list")
+
+
+class MailingDetailView(View):
+    def get(self, request, mailing_id):
+        mailing = get_object_or_404(Mailing, pk=mailing_id)
+        return render(
+            request, "newsletter/mailings/mailing_detail.html", {"mailing": mailing}
+        )

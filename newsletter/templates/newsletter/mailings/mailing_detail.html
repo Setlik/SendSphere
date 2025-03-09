@@ -1,0 +1,22 @@
+{% extends 'newsletter/base.html' %}
+
+{% block title %}Детали рассылки: {{ mailing.subject }}{% endblock %}
+
+{% block content %}
+<h1>Детали рассылки</h1>
+<h2>Тема: {{ mailing.subject }}</h2>
+<p><strong>Статус:</strong> {{ mailing.status }}</p>
+<p><strong>Сообщение:</strong></p>
+<p>{{ mailing.body }}</p>
+
+<h3>Получатели:</h3>
+<ul>
+    {% for recipient in mailing.recipients.all %}
+    <li>{{ recipient.email }}</li>
+    {% empty %}
+    <li>Получателей нет.</li>
+    {% endfor %}
+</ul>
+
+<a href="{% url 'mailing_list' %}" class="btn btn-primary">Назад к списку рассылок</a>
+{% endblock %}
