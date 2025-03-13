@@ -1,0 +1,19 @@
+{% extends 'newsletter/base.html' %}  
+
+{% block content %}  
+    <h1>Список рассылок</h1>  
+    <a href="{% url 'create_mailing' %}" class="btn btn-primary mb-3">Добавить новую рассылку</a>
+    <ul class="list-group">  
+        {% for mailing in mailings %}  
+            <li class="list-group-item">  
+                {{ mailing.message.subject }} ({{ mailing.message.body }})
+                <div class="mt-2">
+                    <a href="{% url 'mailing_start'  mailing_id=mailing.id %}" class="btn btn-primary btn-sm">Запустить рассылку</a>
+                    <a href="{% url 'mailing_update' mailing.id %}" class="btn btn-primary btn-sm">Редактировать</a>
+                    <a href="{% url 'mailing_delete' mailing.id %}" class="btn btn-danger btn-sm">Удалить</a>
+                </div>  
+            </li>  
+        {% endfor %}  
+    </ul>  
+    <script src="/static/js/bootstrap.bundle.min.js"></script>  
+{% endblock %} 

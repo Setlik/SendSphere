@@ -1,0 +1,32 @@
+{% extends 'newsletter/base.html' %}
+
+{% block title %}Статистика рассылок{% endblock %}
+
+{% block content %}
+<h1>Ваши отчеты по рассылкам</h1>
+
+{% if user_report %}
+{% load cache %}
+{% cache 600 my_cache_key %}
+<table class="table">
+    <thead>
+    <tr>
+        <th>Всего отправлено</th>
+        <th>Успешных попыток</th>
+        <th>Неудачных попыток</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>{{ user_report.total_sent }}</td>
+        <td>{{ user_report.successful_attempts }}</td>
+        <td>{{ user_report.failed_attempts }}</td>
+    </tr>
+    </tbody>
+</table>
+{% endcache %}
+{% else %}
+<p>У вас пока нет данных для отчетов.</p>
+{% endif %}
+<script src="/static/js/bootstrap.bundle.min.js"></script>
+{% endblock %}
