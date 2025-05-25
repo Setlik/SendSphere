@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Список сообщений</title>
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+</head>
+<body>
+{% extends 'newsletter/base.html' %}
+
+{% block content %}
+<h1>Список сообщений</h1>
+<a href="{% url 'message_create' %}" class="btn btn-primary mb-3">Добавить новое сообщение</a>
+<ul class="list-group">
+{% for message in messages %}
+    <li class="list-group-item">
+        {{ message.subject }}
+        <div class="mt-2">
+            <a href="{% url 'message_update' message.id %}" class="btn btn-primary btn-sm">Редактировать</a>
+            <a href="{% url 'message_delete' message.id %}" class="btn btn-danger btn-sm">Удалить</a>
+        </div>
+    </li>
+{% endfor %}
+</ul>
+<script src="/static/js/bootstrap.bundle.min.js"></script>
+</body>
+{% endblock %}
+</html>
